@@ -1,39 +1,37 @@
-calc = dict()
-results = dict()
+import operator as op
 
-file = open('input.txt', 'rt')
+ops =   {None : lambda x: x,
+        "NOT" :   op.invert,
+        "OR" :   op.or_,
+        "AND" :   op.and_,
+        "RSHIFT":   op.rshift,
+        "LSHIFT" :   op.lshift
+        }
 
-for line in file:
-    (ops, res) = line.split('->')
-    calc[res.strip()] = ops.strip().split(' ')
+gates = {}
 
+class Gate:
 
-def calculate(name):
-    try:
-        return int(name)
-    except ValueError:
-        pass
+    def __init__(self, oper = None, *inwire):
+        self.oper = oper
+        self.inv = [int(x) if x.isdigit() else x for x in inwire]
+        self.out = 0
 
-    if name not in results:
-        ops = calc[name]
-        if len(ops) == 1:
-            res = calculate(ops[0])
-        else:
-            op = ops[-2]
-            if op == 'AND':
-              res = calculate(ops[0]) & calculate(ops[2])
-            elif op == 'OR':
-              res = calculate(ops[0]) | calculate(ops[2])
-            elif op == 'NOT':
-              res = ~calculate(ops[1]) & 0xffff
-            elif op == 'RSHIFT':
-              res = calculate(ops[0]) >> calculate(ops[2])
-            elif op == 'LSHIFT':
-              res = calculate(ops[0]) << calculate(ops[2])
-        results[name] = res
-    return results[name]
+    def calc(self):
+        if not self.out:
+            self.out = ops[self.oper](*[x if isinstance(x, int) else gates[x].calc() for x in self.inv]) & 0xFFFF
+        return self.out
 
 
-f = open('output1.txt', 'w')
-f.write(str(calculate('a')))
-f.close()
+with open('input.txt') as f:
+    for line in f:
+        in_d, out_d = line.strip().split('-> ')
+        in_d = in_d.split()
+
+        if len(in_d) == 1: gates[out_d] = Gate(None, in_d[0])
+        else: gates[out_d] = Gate(in_d.pop(-2), *in_d)
+
+    ans = gates['a'].calc()
+
+with open('output1.txt', 'w') as f:
+    print(str(ans), file=f)
